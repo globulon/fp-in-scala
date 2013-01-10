@@ -113,7 +113,10 @@ object Chap3 {
 
     def flatMap[A,B](l: List[A])(f: A => List[B]): List[B] = concatenate(map(l)(f))
 
-//    def filterFlatMap[A](l: List[A])(p: A => Boolean): List[A] =
+    private def single[A](a: A) = Cons(a, Nil)
+
+    def filterFlatMap[A](l: List[A])(p: A => Boolean): List[A] =
+      flatMap(l) { item => if (p(item)) empty[A] else single(item) }
 
     def merge[A, B, C](l1: List[A], l2: List[B])(f: (A, B) => C): List[C] = {
       @tailrec
@@ -139,22 +142,44 @@ object Chap3 {
   case class Branch[A](left: Tree[A], right: Tree[A]) extends Tree[A]
 
   object Tree {
-    def size[A](t: Tree[A]): Int =
+//    def size[A](t: Tree[A]): Int =
+//      t match {
+//        case Leaf(_) => 1
+//        case Branch(left, right) => size(left) + size(right)
+//      }
+//
+//    def maximum(t: Tree[Int]): Int =
+//        t match {
+//          case Leaf(data: Int) => data
+//          case Branch(left, right) => scala.math.max(maximum(left), maximum(right))
+//        }
+//
+//    def depth[A](t: Tree[A]): Int =
+//      t match {
+//        case Leaf(_) => 1
+//        case Branch(left, right) => 1 + depth(left).max(depth(right))
+//      }
+//
+//    def map[A, B](t: Tree[A])(f: A => B): Tree[B] =
+//      t match {
+//        case Leaf(v) => Leaf(f(v))
+//        case Branch(l, r) => Branch(map(l)(f), map(r)(f))
+//      }
+
+    def fold[A, B](t: Tree[A])(f: (A) => B)(g: (B, B) => B): B =
       t match {
-        case Leaf(_) => 1
-        case Branch(left, right) => 1 + size(left) + size(right)
+        case Leaf(v) => f(v)
+        case Branch(l, r) => g(fold(l)(f)(g), fold(r)(f)(g))
       }
 
-    def depth[A](t: Tree[A]): Int =
-      t match {
-        case Leaf(_) => 1
-        case Branch(left, right) => 1 + depth(left).max(depth(right))
-      }
+    def size[A](t: Tree[A]): Int  = fold(t)(v => 1)(_ + _)
 
-    def map[A, B](t: Tree[A])(f: A => B): Tree[B] =
-      t match {
-        case Leaf(v) => Leaf(f(v))
-        case Branch(l, r) => Branch(map(l)(f), map(r)(f))
-      }
+    def maximum(t: Tree[Int]): Int = fold(t)(identity)(scala.math.max(_, _))
+
+    def depth[A](t: Tree[A]): Int = fold(t)(v => 1) ( scala.math.max(_, _) + 1 )
+
+    def map[A, B](t: Tree[A])(f: A => B): Tree[B] = fold[A, Tree[B]](t)( v => Leaf(f(v)))(Branch(_, _))
   }
+
+  val aTree = Branch(Branch(Leaf(1), Leaf(2)), Branch(Branch(Leaf(3), Leaf(5)), Leaf(7)))
 }
