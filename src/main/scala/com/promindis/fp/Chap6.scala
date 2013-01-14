@@ -135,5 +135,43 @@ object Chap6 {
       }
 
     def sequence[S,A](as: List[State[S, A]]) = traverse(as)(identity)
+
+    def get[S]: State[S, S] = (s: S)  => (s, s)
+
+    def set[S](s: S): State[S, Unit] = (s0: S) => ((), s)
+
+    def modify[S](f: S => S): State[S, Unit] =
+      flatMap(get[S]) { s =>
+        map(set(f(s))) { _ => ()}
+      }
   }
+
+
+  sealed trait Input
+  case object Coin extends Input
+  case object Turn extends Input
+
+  case class Machine(locked: Boolean, candies: Int, coins: Int)
+
+  object Machine {
+    import State._
+
+    def action(input: Input): State[Machine, Int] = {
+      case m @ Machine(_, 0, _) => (m.coins, m)
+      case Machine(true, candies, coins) if (input == Coin) && (candies > 0) => (coins + 1, Machine(locked = false, candies, coins + 1))
+      case m @ Machine(true, _, _) if (input == Turn) => (m.coins, m)
+      case Machine(false, candies, coins) if (input == Turn) => (coins, Machine(locked = true, candies - 1, coins))
+      case Machine(false, candies, coins) if (input == Coin) => (coins + 1, Machine(locked = false, candies, coins + 1))
+    }
+
+    def simulateMachine(inputs: List[Input]): State[Machine, Int] =
+      map(traverse(inputs)(action(_))) { coins => coins.last }
+  }
+
+  //book example
+  val sim_1 = Machine.simulateMachine(List(Coin, Coin, Coin, Coin)).apply(Machine(locked = false, 17, 10))
+  //can't accept coins when no more candies
+  val sim_2 = Machine.simulateMachine(List(Coin, Coin)).apply(Machine(locked = true, candies = 0, 10))
+
+  val sim_3 = Machine.simulateMachine(List(Coin, Turn, Coin, Turn)).apply(Machine(locked = true, 7, 5))
 }
