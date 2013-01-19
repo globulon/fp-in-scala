@@ -44,12 +44,46 @@ object Chap7 {
       }
 
     //defines parMap as a new primitive
-    def parMap[A, B](l: List[A])(f: A => B): Par[List[B]] =
+    def parMap_1[A, B](l: List[A])(f: A => B): Par[List[B]] =
       (s: ExecutorService) => {
         val latch = new CountDownLatch(l.size)
         val calls = l map (CallMap(_, latch)(f))
         ParMap(s.invokeAll(calls).toList, latch)
       }
+
+
+    def parMap[A,B](l: List[A])(f: A => B): Par[List[B]] = fork {  val
+      fbs: List[Par[B]] = l.map(asyncF(f))
+      sequence(fbs)
+    }
+
+    def traverse[A, B](l: List[A])(f: A => Par[B]): Par[List[B]] =
+      l.reverse.foldLeft(unit(List.empty[B])) { (acc, a) =>
+        map2(f(a), acc)(_::_)
+      }
+
+    def sequence[A](l: List[Par[A]]): Par[List[A]] = traverse(l)(identity)
+
+    def parFilter[A](l: List[A])(f: A => Boolean): Par[List[A]] = {
+      val ps: List[Par[List[A]]] = l map(asyncF(( a => if (f(a)) List(a) else List.empty)))
+      map(sequence(ps))(_.flatten)
+    }
+
+    def equal[A](e: ExecutorService)(p: Par[A], p2: Par[A]): Boolean =  p(e).get == p2(e).get
+
+    def delay[A](fa: => Par[A]): Par[A] =  es => fa(es)
+
+    def choice[A](a: Par[Boolean])(ifTrue: Par[A], ifFalse: Par[A]): Par[A] =
+      choiceN(map(a) (if (_) 0 else 1))(List(ifTrue, ifFalse))
+
+    def choiceN[A](pa: Par[Int])(choices: List[Par[A]]): Par[A] =
+      es => flatMap(pa)(choices)(es)
+
+    def choiceMap[A,B](a: Par[A])(choices: Map[A,Par[B]]): Par[B] =
+      es => flatMap(a)(choices)(es)
+
+    def flatMap[A,B](a: Par[A])(choices: A => Par[B]): Par[B] =
+      es => choices(a(es).get)(es)
   }
 
   case class CallMap[A, B](a: A, latch: CountDownLatch)(f: A => B) extends Callable[B] {
