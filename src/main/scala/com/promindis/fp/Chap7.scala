@@ -1,6 +1,8 @@
 package com.promindis.fp
 
-import java.util.concurrent.{Callable, TimeUnit, Future, ExecutorService}
+import java.util.concurrent._
+import scala.collection.JavaConversions._
+import scala.Some
 
 object Chap7 {
   type Par[A] = (ExecutorService) => Future[A]
@@ -37,7 +39,47 @@ object Chap7 {
     def map_[A, B](fa: Par[A])(f: A => B): Par[B] = (s: ExecutorService) => Transform(fa(s))(f)
 
     def map2_[A, B, C](a: Par[A], b: Par[B])(f: (A, B) => C): Par[C] =
-      map_(product(a, b)){ pair => f(pair._1, pair._2) }
+      map_(product(a, b)) {
+        pair => f(pair._1, pair._2)
+      }
+
+    //defines parMap as a new primitive
+    def parMap[A, B](l: List[A])(f: A => B): Par[List[B]] =
+      (s: ExecutorService) => {
+        val latch = new CountDownLatch(l.size)
+        val calls = l map (CallMap(_, latch)(f))
+        ParMap(s.invokeAll(calls).toList, latch)
+      }
+  }
+
+  case class CallMap[A, B](a: A, latch: CountDownLatch)(f: A => B) extends Callable[B] {
+    def call() = try {
+      f(a)
+    } finally {
+      latch.countDown()
+    }
+  }
+
+  case class ParMap[A](fs: List[Future[A]], latch: CountDownLatch) extends Future[List[A]] {
+    private var memoize: Option[List[A]] = None
+
+    def cancel(mayInterruptIfRunning: Boolean) = fs.foldLeft(true) {
+      (b, f) => b && f.cancel(mayInterruptIfRunning)
+    }
+
+    def get() = get(Long.MaxValue, TimeUnit.MILLISECONDS)
+
+    def get(timeout: Long, unit: TimeUnit) = memoize match {
+      case Some(ls) => ls
+      case None =>
+        latch.await(timeout, unit)
+        memoize = Some(fs.map(_.get))
+        memoize.get
+    }
+
+    def isCancelled = fs.find(_.isCancelled).isDefined
+
+    def isDone = fs.forall(_.isDone)
   }
 
   case class Transform[A, B](fa: Future[A])(f: A => B) extends Future[B] {
@@ -45,7 +87,7 @@ object Chap7 {
 
     def get() = get(Long.MaxValue, TimeUnit.MILLISECONDS)
 
-    def get(timeout: Long, unit: TimeUnit) =  f(fa.get(timeout, unit))
+    def get(timeout: Long, unit: TimeUnit) = f(fa.get(timeout, unit))
 
     def isCancelled = fa.isCancelled
 
