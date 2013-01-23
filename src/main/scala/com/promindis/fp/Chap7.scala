@@ -82,8 +82,15 @@ object Chap7 {
     def choiceMap[A,B](a: Par[A])(choices: Map[A,Par[B]]): Par[B] =
       es => flatMap(a)(choices)(es)
 
-    def flatMap[A,B](a: Par[A])(choices: A => Par[B]): Par[B] =
+    def flatMap_1[A,B](a: Par[A])(choices: A => Par[B]): Par[B] =
       es => choices(a(es).get)(es)
+
+    def join[A](a: Par[Par[A]]): Par[A] =
+      es => (a(es).get())(es)
+
+
+    def flatMap[A,B](a: Par[A])(choices: A => Par[B]): Par[B] = join(map(a)(choices))
+
   }
 
   case class CallMap[A, B](a: A, latch: CountDownLatch)(f: A => B) extends Callable[B] {

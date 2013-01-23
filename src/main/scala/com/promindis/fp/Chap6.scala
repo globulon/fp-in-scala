@@ -19,16 +19,27 @@ object Chap6 {
       }
     }
 
-    def positiveInt: Rand[Int] = (rng: RNG)=> {
+    val positiveInt: Rand[Int] = (rng: RNG)=> {
       val (i, rng2) = rng.nextInt
       if (i == Int.MinValue)  positiveInt(rng2)
       else (math.abs(i), rng2)
     }
 
-    def double: Rand[Double] = (rng: RNG) => {
+    val double: Rand[Double] = (rng: RNG) => {
       val (i, rng2) = positiveInt(rng)
       (i / (Int.MaxValue.toDouble + 1), rng2)
     }
+
+    val boolean: State[RNG,Boolean] = rng => {
+      val (i, rng2) = rng.nextInt
+      (i % 2 == 0, rng2)
+    }
+
+    //can use map too
+    def range(start: Int, stopExclusive: Int): State[RNG, Int] =
+      rng => rng.nextInt match {
+        case (i, rng2) => (start + (i % (stopExclusive - start)), rng2)
+      }
 
     def intDouble(rng: RNG): ((Int,Double), RNG) = {
       val (i, rng2) = positiveInt(rng)
@@ -134,7 +145,7 @@ object Chap6 {
         map2(f(a), bs) (_::_)
       }
 
-    def sequence[S,A](as: List[State[S, A]]) = traverse(as)(identity)
+    def sequence[S,A](as: List[State[S, A]]): State[S, List[A]] = traverse(as)(identity)
 
     def get[S]: State[S, S] = (s: S)  => (s, s)
 

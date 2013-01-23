@@ -5,6 +5,7 @@ object Properties {
   lazy val appVer         = "0.1-SNAPSHOT"
   lazy val scalaVer       = "2.9.2"
   lazy val scalaTestVer   = "1.8"
+  lazy val scalaCheckVer  = "1.1.1"
  }
 
 object BuildSettings {
@@ -15,6 +16,7 @@ object BuildSettings {
     scalaVersion        := scalaVer,
     scalacOptions       := Seq("-unchecked", "-deprecation"),
     ivyValidate         := false
+
   )
 }
 
@@ -30,6 +32,7 @@ object ApplicationDependencies {
 object TestDependencies {
   import Properties._
   lazy val scalaTest = "org.scalatest" %% "scalatest" % scalaTestVer % "test" withSources()
+  lazy val scalaCheck = "org.scalacheck" %% "scalacheck" % "1.10.0" %  "test" withSources()
 }
 
 object ApplicationBuild extends Build {
@@ -41,6 +44,6 @@ object ApplicationBuild extends Build {
     "fp-in-scala",
     file("."),
     settings = buildSettings ++ Seq(resolvers += typesafeReleases) ++  
-              Seq (libraryDependencies ++= Seq(scalaTest))
+              Seq (libraryDependencies ++= Seq(scalaTest, scalaCheck))
   )
 }
