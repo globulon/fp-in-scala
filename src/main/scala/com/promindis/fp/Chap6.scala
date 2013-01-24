@@ -30,6 +30,11 @@ object Chap6 {
       (i / (Int.MaxValue.toDouble + 1), rng2)
     }
 
+    def range(i: Double, j: Double): Rand[Double] =
+      rng => double(rng) match {
+        case  (d, rng2) => ((i + (j - i) * d), rng2)
+      }
+
     val boolean: State[RNG,Boolean] = rng => {
       val (i, rng2) = rng.nextInt
       (i % 2 == 0, rng2)
