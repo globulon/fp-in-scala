@@ -197,6 +197,11 @@ object Chap5 {
     val fibs: Stream[Int] = Stream.unfold((0, 1)) {
       (s) => Some((s._1, (s._2, s._1 + s._2)))
     }
+
+    def map2[A, B, C](s: Stream[A], t: Stream[B])(f: (A, B) => C): Stream[C] =
+      unfold((s, t)) { p =>
+        p._1.uncons.flatMap { a => p._2.uncons map { b => (f(a._1, b._1), (a._2, b._2))} }
+      }
   }
 
   val s = Stream(1, 2, 3)
