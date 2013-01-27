@@ -1,8 +1,6 @@
 package com.promindis.fp
 
 object Chap8 {
-
-  import Chap5._
   import Chap6._
 
   type Domain[+A] = Stream[Option[A]]
@@ -44,7 +42,7 @@ object Chap8 {
 
     def unit[A](a: => A): Gen[A] = Gen(State.unit(a), Stream.constant(Some(a)))
 
-    def boolean: Gen[Boolean] = Gen(RNG.boolean, Stream(Some(true), Some(false)))
+    val boolean: Gen[Boolean] = Gen(RNG.boolean, Stream(Some(true), Some(false)))
 
     def choose(start: Int, stopExclusive: Int): Gen[Int] =
       Gen(sample = RNG.range(start, stopExclusive),
@@ -61,6 +59,9 @@ object Chap8 {
 
     private def makeFixParities(from: Int, to: Int): (Int, Int) => (Int, Int) =
       (a, b) => (a, from + ((b + (abs(b - a) % 2)) - from) % (to - from))
+
+    def listOfN[A](g: Gen[A], size: Gen[Int]): Gen[List[A]] = size flatMap { size => listOfN(size, g) }
+
 
     import RichOption._
     /** Generate lists of length n, using the given generator. */
@@ -80,6 +81,12 @@ object Chap8 {
       sample = RNG.range(i, j),
       exhaustive = unbounded
     )
+
+    def union[A](g: Gen[A], h: Gen[A]): Gen[A] =
+      Gen(
+        sample = State.flatMap(RNG.boolean){ if(_) g.sample else h.sample },
+        exhaustive = Stream.interleave(g.exhaustive, h.exhaustive)
+      )
   }
 
   object RichOption {
