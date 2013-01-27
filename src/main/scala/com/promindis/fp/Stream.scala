@@ -2,7 +2,6 @@ package com.promindis.fp
 
 import annotation.tailrec
 
-
 trait Stream[+A] {
   def uncons: Option[(A, Stream[A])]
 
