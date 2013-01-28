@@ -39,7 +39,6 @@ object Prop {
   }
 }
 
-
 case class Gen[+A](sample: State[RNG, A], exhaustive: Domain[A]) {
   def map[B](f: A => B) = Gen.map(this)(f)
 
@@ -69,8 +68,7 @@ object Gen {
       sample = State.flatMap(g.sample) {
         a => f(a).sample
       },
-      exhaustive = g.exhaustive.flatMap {
-        a =>
+      exhaustive = g.exhaustive.flatMap { a =>
           a.map(f) match {
             case Some(s) => s.exhaustive
             case None => unbounded
@@ -116,8 +114,7 @@ object Gen {
   def listOfN[A](n: Int, g: Gen[A]): Gen[List[A]] =
     Gen(
       sample = State.sequence(List.fill(n)(g.sample)),
-      exhaustive = Stream.unfold(g.exhaustive) {
-        s =>
+      exhaustive = Stream.unfold(g.exhaustive) { s =>
           Some((sequence(s.take(n).toList), s.drop(n)))
       }
     )
@@ -189,5 +186,23 @@ object RichOption {
     }
 
   def sequence[A](as: List[Option[A]]): Option[List[A]] = traverseL(as)(identity)
-
 }
+
+case class SGen[+A](forSize: Int => Gen[A])
+
+object SGen {
+  def map[A, B](g: SGen[A])(f: A => B): SGen[B] = SGen[B] { n => g.forSize(n) map(f) }
+
+  //for a size n we execute n tests Gen[A] and then for each we execute again the Gen[B] obtain
+  //from  the previous test result  and n
+  def flatMap[A, B](g: SGen[A])(f: A => SGen[B]): SGen[B] =
+    SGen[B] { n => g.forSize(n).flatMap { a => f(a).forSize(n) } }
+
+
+  def map2[A, B, C](g1: SGen[A], g2: SGen[B])(f: (A, B) => C): SGen[C] =
+    SGen[C] { n => Gen.map2(g1.forSize(n), g2.forSize(n))(f)  }
+
+  def listOf[A](g: Gen[A]): SGen[List[A]] =
+    SGen { n => Gen.listOfN(n, g) }
+}
+
