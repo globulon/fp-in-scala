@@ -193,7 +193,7 @@ case class SGen[+A](forSize: Int => Gen[A])
 object SGen {
   def map[A, B](g: SGen[A])(f: A => B): SGen[B] = SGen[B] { n => g.forSize(n) map(f) }
 
-  //for a size n we execute n tests Gen[A] and then for each we execute again the Gen[B] obtain
+  //for a size n we exhecute n tests Gen[A] and then for each we execute again the Gen[B] obtain
   //from  the previous test result  and n
   def flatMap[A, B](g: SGen[A])(f: A => SGen[B]): SGen[B] =
     SGen[B] { n => g.forSize(n).flatMap { a => f(a).forSize(n) } }
