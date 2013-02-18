@@ -1,6 +1,9 @@
 package com.promindis.fp
 
 import util.matching.Regex
+import com.promindis.fp.JSON._
+import com.promindis.fp.JSON.JBool
+import com.promindis.fp.JSON.JNumber
 
 trait Parsers[Parser[+ _]] {
   self =>
@@ -10,6 +13,12 @@ trait Parsers[Parser[+ _]] {
   implicit def string(string: String): Parser[String]
 
   implicit def operators[A](p: Parser[A]) = ParserOp(p)
+
+  def any: Parser[Char] = regex(".".r).slice.map(_.charAt(0))
+
+  def number: Parser[Double]
+
+  def boolean: Parser[Boolean]
 
   implicit def asStringParser[A](a: A)(implicit f: A => Parser[String]): ParserOp[String] = ParserOp[String](f(a))
 
@@ -56,6 +65,10 @@ trait Parsers[Parser[+ _]] {
 
   def attempt[A](p: Parser[A]): Parser[A]
 
+  def within[A, B](open: Parser[A], close: Parser[A])(p: => Parser[B]): Parser[B]
+
+  def between[A, B](exp: Parser[A])(p: => Parser[B]): Parser[B] = within(exp, exp)(p)
+
   case class ParserOp[A](p: Parser[A]) {
     def |[B >: A](pb: Parser[B]): Parser[B] = self.or(p, pb)
 
@@ -70,6 +83,8 @@ trait Parsers[Parser[+ _]] {
     def  **[B](p2: Parser[B]): Parser[(A, B)] = self.product(p, p2)
 
     def or[B >: A](p2: Parser[A]): Parser[B] = self.or(p, p2)
+
+    def slice: Parser[String] = self.slice(p)
   }
 }
 
@@ -79,3 +94,41 @@ case class Location(s: String, offset: Int = 0) {
 }
 
 case class ParseError(stack: List[(Location, String)] = List.empty, otherFailures: List[ParseError] = List.empty)
+
+object Parsers {
+  def jsonParser[Parser[+ _]](parsers: Parsers[Parser]): Parser[JSON] = {
+    import parsers._
+
+    val spaces = char(' ').many.slice
+
+    val openPar = char('(')
+
+    var closePar = char(')')
+
+    val openCurly = char('{')
+
+    val closeCurly = char('}')
+
+    val openSquare = char('[')
+
+    val closeSquare = char(']')
+
+    val quote = char('"')
+
+    val jstring: Parser[JSON] = between(quote)(any.many.slice) map JString
+
+    val jnumber: Parser[JSON] = number map JNumber
+
+    val jbool: Parser[JSON] = boolean map JBool
+
+    val jnull: Parser[JSON] = string("null") map (_ => JNull)
+
+    val jarray: Parser[JSON] = null
+
+    val jobject: Parser[JSON]  = null
+
+
+
+    jarray or jobject
+  }
+}
