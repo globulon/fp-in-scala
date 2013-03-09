@@ -128,6 +128,50 @@ object Monoid {
       case Part(l, wc, r) => stubCount(l) + wc + stubCount(r)
     }
   }
+
+  type OrderingSlice[A] = (A, A, Boolean)
+  def min[A](slice: OrderingSlice[A]) = slice._1
+  def max[A](slice: OrderingSlice[A]) = slice._2
+  def isOrdered[_](slice: OrderingSlice[_]): Boolean = slice._3
+
+  object OrderingSlice {
+    def apply[A](min: A, max: A, ordered: Boolean) = (min, max, ordered)
+  }
+
+
+  def orderMonoid[A : Ordering] = new Monoid[Option[OrderingSlice[A]]] {
+    def op(a1: Option[OrderingSlice[A]], a2: Option[OrderingSlice[A]]) = (a1, a2) match {
+      case (None, r) => r
+      case (l, None) => l
+      case (Some(slice1), Some(slice2)) =>
+        val o = implicitly[Ordering[A]]
+        Some((
+          o min(min(slice1), min(slice2)),
+          o max(max(slice1), max(slice2)),
+          isOrdered(slice1) && isOrdered(slice2) && (o lteq(max(slice1), min(slice2)))
+        ))
+    }
+
+    def zero = None
+  }
+
+
+  def foldMapV[A,B](v: Traversable[A], m: Monoid[B])(f: A => B): B = v.size match {
+    case 0 => m.zero
+    case 1 => f(v.head)
+    case length => {
+      val (l, r) = v splitAt (length / 2)
+      m.op(foldMapV(l, m)(f), foldMapV(r, m)(f))
+    }
+  }
+
+  def ordered[A : Ordering](seq: Traversable[A]): Boolean =
+    foldMapV(seq, orderMonoid[A]) {
+      case item => Some(OrderingSlice(item, item, ordered = true))
+    } match {
+      case None => true
+      case Some(slice) => isOrdered(slice)
+    }
 }
 
 sealed trait WC
