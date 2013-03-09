@@ -77,16 +77,16 @@ object Monoid {
   def foldMap[A,B](as: List[A], m: Monoid[B])(f: A => B): B =  {
     @tailrec
     def iter(acc: B, remaining: List[A]): B = remaining match {
-      case head::tail => iter(m.op(f(head), acc), tail)
+      case head::tail => iter(m.op(acc, f(head)), tail)
       case Nil => acc
     }
 
     iter(m.zero, as)
   }
 
-  def foldRight[A, B](as: List[A])(z: B)(f: (A,B) => B): B = foldMap(as, endoMonoid[B])(f.curried)(z)
+  def foldRight[A, B](as: List[A])(z: B)(f: (A,B) => B): B = foldMap(as, dual(endoMonoid[B]))(f.curried)(z)
 
-  def foldLeft[A, B](as: List[A])(z: B)(f: (B,A) => B): B = foldMap(as, dual(endoMonoid[B]))(a => b => f(b, a))(z)
+  def foldLeft[A, B](as: List[A])(z: B)(f: (B,A) => B): B = foldMap(as, endoMonoid[B])(a => b => f(b, a))(z)
 
   val wcMonoid: Monoid[WC] = new Monoid[WC] {
     def op(a1: WC, a2: WC): WC = (a1, a2) match {
