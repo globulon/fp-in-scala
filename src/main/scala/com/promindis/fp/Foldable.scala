@@ -33,16 +33,15 @@ object Foldable {
   }
 
   val indexedSeq = new Foldable[IndexedSeq] {
-    def foldMap[A, B](as: IndexedSeq[A])(f: (A) => B)(mb: Monoid[B]) = {
-      @tailrec
-      def iter(acc: B, rem: IndexedSeq[A]): B  =
-        rem match {
-          case _ if rem.isEmpty => acc
-          case _ => iter(mb.op(acc, f(rem.head)), rem.tail)
+    def foldMap[A, B](as: IndexedSeq[A])(f: (A) => B)(mb: Monoid[B]): B =
+      as.size match {
+        case s if s == 0 => mb.zero
+        case s if s == 1 => f(as.head)
+        case s => {
+          val (l, r) = as splitAt (s / 2)
+          mb.op(foldMap(l)(f)(mb), foldMap(r)(f)(mb))
         }
-
-      iter(mb.zero, as)
-    }
+      }
 
     def foldLeft[A, B](as: IndexedSeq[A])(z: B)(f: (B, A) => B) =
       foldMap(as)((a: A) => (b:  B) => f(b, a))(Monoid.endoMonoid[B])(z)

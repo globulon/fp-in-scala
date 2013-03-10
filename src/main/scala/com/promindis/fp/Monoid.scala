@@ -172,6 +172,43 @@ object Monoid {
       case None => true
       case Some(slice) => isOrdered(slice)
     }
+
+
+  def productMonoid[A,B](A: Monoid[A], B: Monoid[B]): Monoid[(A,B)] = new Monoid[(A,B)] {
+    def op(a1: (A, B), a2: (A, B)) = (A.op(a1._1, a2._1), B.op(a1._2, a2._2))
+
+    def zero = (A.zero, B.zero)
+  }
+
+//  def coproductMonoid[A,B](A: Monoid[A],
+//                           B: Monoid[B]): Monoid[Either[A,B]] = new Monoid[Either[A,B]] {
+//    def op(a1: Either[A, B], a2: Either[A, B]) = null
+//
+//    def zero = Right(B.zero)
+//  }
+
+  def mergeMapMonoid[K,V](m: Monoid[V]): Monoid[Map[K,V]] = new Monoid[Map[K,V]] {
+    def op(a1: Map[K, V], a2: Map[K, V]) = a2 ++ (a1 map {
+        case (k,v) => (k, m.op(v, a2 get(k) getOrElse (m.zero)))
+      })
+
+    def zero = Map.empty[K,V]
+  }
+
+  def functionMonoid[A,B](B: Monoid[B]): Monoid[A => B] = new Monoid[A => B] {
+    def op(a1: (A) => B, a2: (A) => B): (A) => B =  a => B.op(a1(a), a2(a))
+
+    def zero: (A) => B = a => B.zero
+  }
+
+//  def frequencyMap(strings: IndexedSeq[String]): Map[String, Int]
+  val wordFrequencyMonoid: Monoid[Map[String, Int]] = mergeMapMonoid[String, Int](intAddition)
+
+  def countFrequencies(str: String): Map[String, Int] =
+  Foldable.indexedSeq.foldMap(str.split(" "))(s => Map(s -> 1))(wordFrequencyMonoid)
+
+  def frequencyMap(strings: IndexedSeq[String]): Map[String, Int] =
+    Foldable.indexedSeq.foldMap(strings)(countFrequencies(_))(wordFrequencyMonoid)
 }
 
 sealed trait WC
