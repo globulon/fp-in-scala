@@ -202,7 +202,7 @@ object Monoid {
   }
 
 //  def frequencyMap(strings: IndexedSeq[String]): Map[String, Int]
-  val wordFrequencyMonoid: Monoid[Map[String, Int]] = mergeMapMonoid[String, Int](intAddition)
+  val wordFrequencyMonoid: Monoid[Map[String, Int]] = mergeMapMonoid(intAddition)
 
   def countFrequencies(str: String): Map[String, Int] =
   Foldable.indexedSeq.foldMap(str.split(" "))(s => Map(s -> 1))(wordFrequencyMonoid)
