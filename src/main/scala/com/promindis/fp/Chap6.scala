@@ -160,6 +160,14 @@ object Chap6 {
       flatMap(get[S]) { s =>
         map(set(f(s))) { _ => ()}
       }
+
+    implicit def toRichState[S, A](s: State[S, A]) = new {
+      def map[B](f: A => B) = State.map(s)(f)
+
+      def flatMap[B](f: A => State[S, B]) = State.flatMap(s)(f)
+    }
+
+    def apply[S, A](f: S => (A,S)): State[S, A] = f
   }
 
 
@@ -191,3 +199,4 @@ object Chap6 {
 
   val sim_3 = Machine.simulateMachine(List(Coin, Turn, Coin, Turn)).apply(Machine(locked = true, 7, 5))
 }
+

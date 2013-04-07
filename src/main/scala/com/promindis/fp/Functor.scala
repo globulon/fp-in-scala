@@ -77,10 +77,48 @@ object Monad {
   }
 
   import Chap6._
+  import State._
 
   def stateMonad[S] = new Monad[({type lambda[X] = State[S, X]})#lambda] {
     def flatMap[A, B](ma: (S) => (A, S))(f: (A) => (S) => (B, S)) = State.flatMap(ma)(f)
 
     def unit[A](a: => A): State[S, A] = (s: S) => (a, s)
   }
+
+  def push(x: Int): State[List[Int], Int] = l => (x, x::l)
+
+  val pop: State[List[Int], Unit] = {
+    case h::t => ((), t)
+    case Nil => ((), Nil)
+  }
+
+  val testState: State[List[Int], Unit] = for {
+    _ <- push(3)
+    _ <- push(5)
+    _ <- push(7)
+    r <- pop
+  } yield r
+
+  val stackMonad = stateMonad[List[Int]]
+
+  //applied to List give List(4,4,4,4)
+  val replicateModifyState = stackMonad.replicateM(4, push(4))
+
+  //operate on result, and keep the state
+  val map2State = stackMonad.map2(push(3), push(4))((_, _))
+
+  //collect side effects in the list and get the list state anyway
+  val sequenceState = stackMonad.sequence(List(push(3), push(4), push(5)))
+
+  def getState[S]: State[S, S] = s => (s, s)
+  def setState[S](f:  => S): State[S, Unit]  = s => ((), s)
+
+  val M = stateMonad[Int]
+
+  def zipWithIndex[A](as: List[A]): List[(Int,A)] =
+    as.foldLeft(M.unit(List[(Int, A)]()))((acc,a) => for {
+      n <- getState
+      xs <- acc
+      _ <- setState(n + 1)
+    } yield ((n, a) :: xs)).apply(0)._1.reverse
 }
