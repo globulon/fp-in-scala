@@ -43,7 +43,7 @@ object ApplicationBuild extends Build {
   lazy val fpInScala = Project(
     "fp-in-scala",
     file("."),
-    settings = buildSettings ++ Seq(resolvers += typesafeReleases) ++  
+    settings = buildSettings ++ Seq(resolvers += typesafeReleases) ++ Seq(scalacOptions ++= Seq("-feature", "-target:jvm-1.7")) ++
               Seq (libraryDependencies ++= Seq(scalaTest, scalaCheck))
   )
 }

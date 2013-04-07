@@ -1,6 +1,7 @@
 package com.promindis.fp
 
 import annotation.tailrec
+import scala.language.implicitConversions
 
 object Chap6 {
   type State[S,+A] = S => (A,S)

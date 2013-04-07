@@ -1,6 +1,7 @@
 package com.promindis.fp
 
 import annotation.tailrec
+import scala.language.implicitConversions
 
 trait Monoid[A] {
   def op(a1: A, a2: A): A

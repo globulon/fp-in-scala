@@ -4,6 +4,9 @@ import util.matching.Regex
 import com.promindis.fp.JSON._
 import com.promindis.fp.JSON.JBool
 import com.promindis.fp.JSON.JNumber
+import scala.language.implicitConversions
+import scala.language.higherKinds
+
 
 trait Parsers[Parser[+ _]] {
   self =>

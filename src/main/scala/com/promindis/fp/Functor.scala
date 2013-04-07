@@ -1,17 +1,17 @@
 package com.promindis.fp
+import scala.language.higherKinds
+import scala.language.reflectiveCalls
 
 trait Functor[F[_]] {
   def map[A,B](fa: F[A])(f: A => B): F[B]
 
   def distribute[A, B](f: F[(A, B)]): (F[A], F[B]) = (map(f)(_._1), map(f)(_._2))
-
 }
 
 object Functor {
   val listFunctor = new Functor[List] {
     def map[A, B](fa: List[A])(f: (A) => B): List[B] = fa.map(f)
   }
-
 }
 
 trait Monad[M[_]] extends Functor[M] {
@@ -48,7 +48,6 @@ trait Monad[M[_]] extends Functor[M] {
 
   def compose2[A,B,C](f: A => M[B], g: B => M[C]): A => M[C] =
     a => join(map(f(a))(g))
-
 }
 
 object Monad {
