@@ -22,6 +22,11 @@ object IO {
     }
   }
 
+  def run[F[_], A](mf: Monad[F])(io: IO[F, A]): F[A] = io match {
+    case Pure(a) => mf.unit(a)
+    case Request(req, rec) => mf.flatMap(req) { x => run(mf)(rec(x)) }
+  }
+
   def map[F[_], A, B](io: IO[F, A])(f: A => B): IO[F, B] = io match {
     case Pure(a) => Pure(f(a))
     case Request(req, rec) => Request(req, rec andThen { x => IO.map(x)(f) } )
@@ -69,4 +74,19 @@ trait CLI {
       }
     }
   }
+
+  //ex 2
+  def console(lines: List[String]): Run[Console] = new Run[Console] {
+    def apply[A](fa: Console[A]) = fa match {
+      case ReadLine =>  lines match {
+        case Nil => (None, console(List.empty))
+        case h::t => (Some(h), console(t))
+      }
+      case PrintLine(s) => {
+        println(s)
+        ((), console(lines))
+      }
+    }
+  }
 }
+

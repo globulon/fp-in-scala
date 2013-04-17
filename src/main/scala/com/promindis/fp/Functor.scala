@@ -14,23 +14,10 @@ object Functor {
   }
 }
 
-trait Monad[M[_]] extends Functor[M] {
-  def unit[A](a: => A): M[A]
-
+trait Monad[M[_]] extends Applicative[M] {
   def flatMap[A,B](ma: M[A])(f: A => M[B]): M[B]
 
   def map[A,B](ma: M[A])(f: A => B): M[B] = flatMap(ma)(a => unit(f(a)))
-
-  def map2[A,B,C](ma: M[A], mb: M[B])(f: (A, B) => C): M[C] = flatMap(ma)(a => map(mb)(b => f(a, b)))
-
-  def traverse[A,B](la: List[A])(f: A => M[B]): M[List[B]] =
-    la.foldLeft(unit(List.empty[B])) { (acc, item) => map2(f(item), acc) (_ :: _) }
-
-  def sequence[A](lma: List[M[A]]): M[List[A]] = traverse(lma)(identity[M[A]])
-
-  def replicateM[A](n: Int, ma: M[A]): M[List[A]] = sequence(List.fill(n)(ma))
-
-  def factor[A,B](ma: M[A], mb: M[B]): M[(A, B)] = map2(ma, mb)((_, _))
 
   def cofactor[A,B](e: Either[M[A], M[B]]): M[Either[A, B]] =
     e match {
@@ -46,8 +33,10 @@ trait Monad[M[_]] extends Functor[M] {
 
   def flatMap3[A,B](ma: M[A])(f: A => M[B]): M[B] = join(map(ma)(f))
 
-  def compose2[A,B,C](f: A => M[B], g: B => M[C]): A => M[C] =
-    a => join(map(f(a))(g))
+  def compose2[A,B,C](f: A => M[B], g: B => M[C]): A => M[C] = a => join(map(f(a))(g))
+
+  override def apply[A, B](mf: M[A => B])(ma: M[A]): M[B] = flatMap(mf) (map(ma)(_))
+
 }
 
 object Monad {
