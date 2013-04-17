@@ -17,8 +17,6 @@ object Functor {
 trait Monad[M[_]] extends Applicative[M] {
   def flatMap[A,B](ma: M[A])(f: A => M[B]): M[B]
 
-  def map[A,B](ma: M[A])(f: A => B): M[B] = flatMap(ma)(a => unit(f(a)))
-
   def cofactor[A,B](e: Either[M[A], M[B]]): M[Either[A, B]] =
     e match {
       case Left(ma) => map (ma)(Left(_))

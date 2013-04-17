@@ -29,10 +29,10 @@ object Validation {
   }
 
   def applicative[E] = new Applicative[({type lambda[A] = Validation[E, A]})#lambda] {
-    def apply[A, B](fab: Validation[E, (A) => B])(fa: Validation[E, A]) = Validation.apply(fab)(fa)
+    override def apply[A, B](fab: Validation[E, (A) => B])(fa: Validation[E, A]) = Validation.apply(fab)(fa)
 
     def unit[A](a: => A) = Success(a)
 
-    def map[A, B](va: Validation[E, A])(f: (A) => B) = Validation.map(va)(f)
+    override def map[A, B](va: Validation[E, A])(f: (A) => B) = Validation.map(va)(f)
   }
 }
