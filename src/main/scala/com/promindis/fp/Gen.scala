@@ -11,7 +11,7 @@ case object Proven extends Status
 case object Unfalsified extends Status
 
 case class Prop(run: (TestCases, RNG) => Result) {
-  def &&(p: Prop): Prop = Prop.&&(this, p)
+//  def &&(p: Prop): Prop = Prop.&&(this, p)
 
   def ||(p: Prop): Prop = Prop.||(this, p)
 }
@@ -22,15 +22,15 @@ object Prop {
   type FailedCase = String
   type Result = Either[FailedCase, (Status, SuccessCount)]
 
-  def &&(p: Prop, q: Prop):  Prop = Prop {
-    (n , rng) => p.run(n, rng) match {
-      case l @ Left(_) => l
-      case Right((_, i)) => q.run(n, rng).right  map {
-        case (s, j) => (s, i + j)
-      }
-    }
-  }
-
+//  def &&(p: Prop, q: Prop):  Prop = Prop {
+//    (n , rng) => p.run(n, rng) match {
+//      case l @ Left(_) => l
+//      case Right((_, i)) => q.run(n, rng).right  map {
+//        case (s, j) => (s, i + j)
+//      }
+//    }
+//  }
+//
   def ||(p: Prop, q: Prop):  Prop = Prop {
     (n , rng) => p.run(n, rng) match {
       case l @ Left(_) => q.run(n, rng)
