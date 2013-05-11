@@ -24,7 +24,9 @@ object IO {
 
   def run[F[_], A](mf: Monad[F])(io: IO[F, A]): F[A] = io match {
     case Pure(a) => mf.unit(a)
-    case Request(req, rec) => mf.flatMap(req) { x => run(mf)(rec(x)) }
+    case Request(req, rec) => {
+      mf.flatMap(req) { x => run(mf)(rec(x)) }
+    }
   }
 
   def map[F[_], A, B](io: IO[F, A])(f: A => B): IO[F, B] = io match {
@@ -34,7 +36,7 @@ object IO {
 
   def flatMap[F[_], A, B](io: IO[F, A])(f: A => IO[F, B]): IO[F, B] = io match {
     case Pure(a) => f(a)
-    case Request(req, rec) => Request(req, rec andThen { x => IO.flatMap(x)(f) } )
+    case Request(req, rec) => Request(req, rec andThen { x => IO.flatMap(x)(f) })
   }
 
   def unit[F[_], A](a: => A): IO[F, A] = Pure(a)
@@ -52,6 +54,44 @@ object IO {
       case Request(req, rec) => Request(req, rec andThen join)
     }
   }
+
+  def apply[A](a: => A): IO[Runnable,A] = Request(Delay(a), Pure.apply(_: A))
+}
+
+
+trait Runnable[A] {
+  def run: A
+}
+
+object Delay {
+  def apply[A](a: => A) = new Runnable[A] {
+    def run: A = a
+
+    override def toString = "Delay(%s)" format(a.toString)
+
+  }
+
+  def map[A, B](r: Runnable[A])(f: A => B): Runnable[B]  = new Runnable[B] {
+    def run = {
+      f(r.run)
+    }
+  }
+
+  def flatMap[A, B](r: Runnable[A])(f: A => Runnable[B]): Runnable[B]  = new Runnable[B] {
+    def run = {
+      println("--------")
+      f(r.run).run
+    }
+  }
+
+  val monad: Monad[Runnable] = new Monad[Runnable] {
+    def flatMap[A, B](ma: Runnable[A])(f: (A) => Runnable[B]) = Delay.flatMap(ma)(f)
+
+    override def map[A, B](ma: Runnable[A])(f: (A) => B) = Delay.map(ma)(f)
+
+    def unit[A](a: => A) = Delay(a)
+  }
+
 }
 
 trait Run[F[_]] {
@@ -68,7 +108,7 @@ trait CLI {
   val runConsole: Run[Console] = new Run[Console] {
     def apply[A](fa: Console[A]): (A, Run[Console]) = fa match {
       case ReadLine =>  (Some(readLine()), runConsole)
-      case PrintLine(s) => {
+      case PrintLine(s)=> {
         println(s)
         ((), runConsole)
       }
@@ -90,3 +130,16 @@ trait CLI {
   }
 }
 
+object RunIO {
+  def main(args: Array[String]) {
+    val F = IO.monad[Runnable]
+    import F._
+    val s = sequence(List.fill(1)(IO {math.random}).toList)
+    println(IO.run(Delay.monad)(s).run)
+
+//    val Request(d, f) = sequence(List(IO {math.random}))
+//    println(f(d.run))
+
+  }
+
+}
