@@ -3,17 +3,22 @@ package com.promindis.fp
 import annotation.tailrec
 import scala.language.higherKinds
 
-sealed trait IO[F[_], +A] {
+trait IO[F[_], +A] {
   def map[B](f: A => B): IO[F, B] = IO.map(this)(f)
 
   def flatMap[B](f: A => IO[F, B]): IO[F, B] = IO.flatMap(this)(f)
 }
 
-case class Pure[F[_], +A](a: A) extends IO[F, A]
-
-case class Request[F[_], I, +A](req: F[I], receive: I => IO[F, A]) extends IO[F, A]
+case class Pure[F[_], +A](get: A) extends IO[F,A]
+case class Request[F[_],I,+A]( expr: F[I], receive: I => IO[F,A]) extends IO[F,A]
+//case class BindMore[F[_],A,+B]( force: () => IO[F,A], f: A => IO[F,B]) extends IO[F,B]
+//case class BindRequest[F[_],I,A,+B]( expr: F[I], receive: I => IO[F,A], f: A => IO[F,B]) extends IO[F,B]
+//case class More[F[_],A](force: () => IO[F,A]) extends IO[F,A]
 
 object IO {
+//  def run[F[_],A](R: Run[F])(io: IO[F,A]): A
+//  def run[F[_],A](F: Monad[F])(io: IO[F,A]): F[A]
+
   @tailrec
   def run[F[_], A](r: Run[F])(io: IO[F, A]): A = io match {
     case Pure(a) => a
