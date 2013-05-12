@@ -58,7 +58,6 @@ object IO {
   def apply[A](a: => A): IO[Runnable,A] = Request(Delay(a), Pure.apply(_: A))
 }
 
-
 trait Runnable[A] {
   def run: A
 }
