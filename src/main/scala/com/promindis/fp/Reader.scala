@@ -24,4 +24,6 @@ object Reader {
   }
 
   def ask[R] = Reader[R, R] (identity)
+
+  def local[A, R](ra: Reader[R, A])(f: R => R): Reader[R, A] = Reader(f andThen ra.run)
 }
