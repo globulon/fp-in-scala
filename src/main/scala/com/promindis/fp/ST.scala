@@ -1,5 +1,7 @@
 package com.promindis.fp
 
+import scala.reflect.ClassTag
+
 trait ST[S, A] {
   self =>
   protected def run(s: S): (A, S)
@@ -10,7 +12,7 @@ trait ST[S, A] {
 }
 
 object ST {
-  def apply[S, A](a: => A) = new ST[S, A] {
+  def apply[S, A](a: => A): ST[S, A] = new ST[S, A] {
     lazy val cached = a
 
     def run(s: S) = (a, s)
@@ -55,6 +57,95 @@ object STRef {
 
 trait RunnableST[A] {
   def apply[S]: ST[S, A]
+}
+
+sealed abstract class STArray[S, A](implicit evidence: ClassTag[A]) {
+  protected def array: Array[A]
+
+  def size: ST[S, Int] = ST(array.length)
+
+  def write(pos: Int, a: A): ST[S, Unit] = new ST[S, Unit] {
+    protected def run(s: S) = {
+      array(pos) = a
+      ((), s)
+    }
+  }
+
+  def read(pos: Int): ST[S, A] = ST(array(pos))
+
+  def freeze: ST[S, List[A]] = ST(array.toList)
+
+//  def fill(xs: Map[Int,A]): ST[S, Unit] = xs.headOption match {
+//    case None => ST(())
+//    case Some(e) => for {
+//      _ <- write(e._1, e._2)
+//      r <- fill(xs - e._1)
+//    } yield r
+//  }
+
+  def fill(xs: Map[Int,A]): ST[S, Unit] =
+    xs.foldRight(ST[S, Unit](())) {
+      case ((k, v), st) => st flatMap { _ => write(k, v) }
+    }
+
+  def swap(i: Int, j: Int): ST[S, Unit] = for {
+    x <- read(i)
+    y <- read(j)
+    _ <- write(i, y)
+    _ <- write(j, x)
+  } yield ()
+}
+
+object STArray {
+  def apply[S, A : ClassTag](sz: Int, a: A): ST[S, STArray[S, A]] = ST[S, STArray[S, A]] ( new STArray[S, A] {
+    protected lazy val array = Array.fill(sz)(a)
+  })
+
+  def fromList[S, A : ClassTag](xs: List[A]): ST[S, STArray[S, A]] = ST[S, STArray[S, A]](new STArray[S, A] {
+    protected lazy val array = xs.toArray
+  })
+}
+
+trait STArrays {
+  def unit[S]: ST[S, Unit] = ST[S, Unit](())
+
+  def partition[S](arr: STArray[S,Int], l: Int, r: Int, pivot: Int): ST[S,Int] = for {
+    p <- arr.read(pivot)
+    _ <- arr.swap(pivot, r)
+    jr <- STRef[S, Int](l)
+    _ <- (l until r).foldLeft(unit[S]) { (st, i) => for {
+        _ <- st
+        a <- arr.read(i)
+        j <- jr.read
+        _ <- if (a < p) arr.swap(i, j) flatMap(_ => jr.write(j + 1)) else unit[S]
+      } yield ()
+    }
+    jj <- jr.read
+    _ <- arr.swap(jj, r)
+  } yield jj
+
+  def qs[S](arr: STArray[S,Int], l: Int, r: Int): ST[S,Unit] =
+    if (l < r) {
+      for {
+        pi <- partition[S](arr, l, r, l + (l - r) / 2)
+        _ <- qs[S](arr, l, pi - 1)
+        _ <- qs[S](arr, pi + 1, r)
+      } yield ()
+    } else unit[S]
+
+  def quicksort(xs: List[Int]): List[Int] =
+    if (xs.isEmpty) xs else ST.run(new RunnableST[List[Int]] {
+      def apply[S] = for {
+        arr <- STArray.fromList(xs)
+        size <- arr.size
+        _ <- qs(arr, 0, size - 1)
+        sorted <- arr.freeze
+      } yield sorted
+    })
+
+  def main(args: Array[String]) {
+
+  }
 }
 
 object UseSTRef {
