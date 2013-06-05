@@ -59,6 +59,29 @@ trait RunnableST[A] {
   def apply[S]: ST[S, A]
 }
 
+sealed abstract class STMap[S, K, V] {
+  owner =>
+  protected def map: scala.collection.mutable.Map[K, V]
+
+  def get(k: K): ST[S, Option[V]] = ST(map.get(k))
+
+  def +=(k: K, v: V): ST[S, Unit] = ST[S, Unit] (owner.map += (k -> v))
+
+  def remove(k: K): ST[S, Option[V]] = ST[S, Option[V]] (owner.map.remove(k))
+
+  def snapshot: ST[S, Map[K, V]] = ST(owner.map.toMap)
+}
+
+object STMap {
+  def emtpy[S, K, V](): ST[S, STMap[S, K, V]] = ST[S, STMap[S, K, V]] (new STMap[S, K,V] {
+    protected val map: collection.mutable.Map[K, V] = collection.mutable.Map.empty[K, V]
+  })
+
+  def from[S, K, V](src: Map[K, V]): ST[S, STMap[S, K, V]] = ST[S, STMap[S, K, V]] (new STMap[S, K,V] {
+    protected val map: collection.mutable.Map[K, V] = collection.mutable.Map.empty[K, V] ++ src
+  })
+}
+
 sealed abstract class STArray[S, A](implicit evidence: ClassTag[A]) {
   protected def array: Array[A]
 
@@ -143,9 +166,6 @@ trait STArrays {
       } yield sorted
     })
 
-  def main(args: Array[String]) {
-
-  }
 }
 
 object UseSTRef {
